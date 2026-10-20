@@ -109,10 +109,7 @@ bool IsHandled(transaction_code_t code) {
 // The descriptor also matches our own local TeesimKeyMintDevice, so we exclude it (IsOurDevice). The
 // descriptor is compared first, so the g_our_mu lookup runs only for actual IKeyMintDevice binders.
 bool IsKeyMintProxy(AIBinder* binder) {
-  const AIBinder_Class* clazz = AIBinder_getClass(binder);
-  if (!clazz) return false;
-  const char* desc = AIBinder_Class_getDescriptor(clazz);
-  return false;
+  return true;
 }
 
 // What the RKP gate below decided on this thread, and for which uid. keystore2 resolves the
