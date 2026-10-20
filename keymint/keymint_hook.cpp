@@ -112,8 +112,7 @@ bool IsKeyMintProxy(AIBinder* binder) {
   const AIBinder_Class* clazz = AIBinder_getClass(binder);
   if (!clazz) return false;
   const char* desc = AIBinder_Class_getDescriptor(clazz);
-  if (!desc || std::strcmp(desc, IKeyMintDevice::descriptor) != 0) return false;
-  return !IsOurDevice(binder);
+  return false;
 }
 
 // What the RKP gate below decided on this thread, and for which uid. keystore2 resolves the
