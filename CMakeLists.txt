@@ -98,20 +98,6 @@ if(NOT EXISTS ${AIDL_GEN}/.done)
       message(FATAL_ERROR "aidl generation failed for ${pkg}")
     endif()
   endforeach()
-  # The NDK AIDL's fromBinder already handles a LOCAL binder whose AIBinder_Class differs from our
-  # statically-linked copy (a legacy km_compat IKeyMintDevice / IKeyMintOperation): when
-  # AIBinder_associateClass fails it falls back to a descriptor match and builds a Bp, but only under
-  # #if __ANDROID_API__ >= 31. keymint_aidl is compiled at API 31 below to enable that branch; require
-  # the generated code to actually contain it so an aidl too old to emit the fallback fails the build
-  # here rather than silently returning null on legacy devices.
-  if(NOT EXISTS ${AIDL_GEN}/src/android/hardware/security/keymint/IKeyMintDevice.cpp)
-    message(FATAL_ERROR "keymint: aidl did not generate IKeyMintDevice.cpp")
-  endif()
-  file(READ ${AIDL_GEN}/src/android/hardware/security/keymint/IKeyMintDevice.cpp _dev_cpp)
-  if(NOT _dev_cpp MATCHES "AIBinder_Class_getDescriptor")
-    message(FATAL_ERROR "keymint: generated fromBinder lacks the local-binder fallback; "
-                        "build with build-tools >= 35 (36 recommended)")
-  endif()
   file(TOUCH ${AIDL_GEN}/.done)
 endif()
 
@@ -120,18 +106,6 @@ file(GLOB_RECURSE AIDL_SRCS ${AIDL_GEN}/src/*.cpp)
 add_library(keymint_aidl STATIC ${AIDL_SRCS})
 target_include_directories(keymint_aidl PUBLIC
     ${AIDL_GEN}/include ${FN}/include_cpp ${FN}/include_ndk ${FN}/include_platform)
-# keymint_aidl links only into teesim_keymint.so, which is injected into keystore2 (API 31+ only), so
-# compile it at API 31 to enable the AIDL's own local-binder fallback in fromBinder (gated
-# #if __ANDROID_API__ >= 31). The AIBinder_Class_getDescriptor it then calls is left undefined here and
-# resolved at runtime against keystore2's libbinder_ndk (teesim_keymint links with -Wl,-z,undefs). The
-# rest of the module keeps its lower min-SDK floor; only this static lib is raised. The NDK toolchain's
-# compiler target ends in the API level, so bump that suffix to 31.
-if(CMAKE_CXX_COMPILER_TARGET MATCHES "[0-9]+$")
-  string(REGEX REPLACE "[0-9]+$" "31" _km_target "${CMAKE_CXX_COMPILER_TARGET}")
-  target_compile_options(keymint_aidl PRIVATE "--target=${_km_target}")
-else()
-  message(FATAL_ERROR "keymint: cannot derive an API-31 target from '${CMAKE_CXX_COMPILER_TARGET}'")
-endif()
 
 # --- The in-process TA (Rust static library) --------------------------------
 if(ANDROID_ABI STREQUAL "arm64-v8a")
